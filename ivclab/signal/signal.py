@@ -44,11 +44,11 @@ def lowpass_filter(image, kernel):
     # YOUR CODE STARTS HERE
 #question about normalized filter
     # Wrap padding H W C C do not need to wrap
-    padded_image = np.pad(image, ((kernel.shape[0] // 2, kernel.shape[0] // 2), (kernel.shape[1] // 2, kernel.shape[1] // 2),(0, 0)), mode='wrap')
+    # padded_image = np.pad(image, ((kernel.shape[0] // 2, kernel.shape[0] // 2), (kernel.shape[1] // 2, kernel.shape[1] // 2),(0, 0)), mode='wrap')
 
     # Apply convolution to each channel separately and mode used valid not same
     for channel in range(image.shape[2]):
-        filtered[:, :, channel] = convolve2d(padded_image[:, :, channel], kernel, mode='valid', boundary='fill')
+        filtered[:, :, channel] = convolve2d(image[:, :, channel], kernel, mode='same', boundary='fill')
 
     # YOUR CODE ENDS HERE
     return filtered

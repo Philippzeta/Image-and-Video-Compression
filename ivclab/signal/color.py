@@ -28,8 +28,8 @@ def rgb2ycbcr(image: np.array):
     B = image[:, :, 2]
 
     Y = 0.299 * R + 0.587 * G + 0.114 * B
-    Cb = -0.169 * R - 0.331 * G + 0.5 * B + 128
-    Cr = 0.5 * R - 0.419 * G - 0.081 * B + 128
+    Cb = -0.169 * R - 0.331 * G + 0.5 * B
+    Cr = 0.5 * R - 0.419 * G - 0.081 * B
 
     output_image[:, :, 0] = Y
     output_image[:, :, 1] = Cb
@@ -49,8 +49,8 @@ def ycbcr2rgb(image: np.array):
     output_image = np.zeros_like(image)
     # YOUR CODE STARTS HERE
     Y = image[:, :, 0]
-    Cb = image[:, :, 1] - 128
-    Cr = image[:, :, 2] - 128
+    Cb = image[:, :, 1]
+    Cr = image[:, :, 2]
 
     R = Y + 1.402 * Cr
     G = Y - 0.344 * Cb - 0.714 * Cr
