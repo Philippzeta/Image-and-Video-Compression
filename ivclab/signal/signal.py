@@ -85,8 +85,8 @@ class FilterPipeline:
         # Downsample
         downsampled_image = downsample(image)
 
-        # Upsample
-        upsampled_image = upsample(downsampled_image)
+        # Upsample energy becasue of downsample become 0,25 so * 4 in upsample
+        upsampled_image = 4*upsample(downsampled_image)
 
         # postfilter
         filtered_image = lowpass_filter(upsampled_image, self.kernel)
