@@ -7,7 +7,7 @@ import numpy as np
 # _predict_from_neighbors functions in ivclab.image.predictive file.
 # You can run ch2 tests to make sure they are implemented correctly
 
-lena_img = imread(f'data/lena.tif')
+lena_img = imread(f'../../data/lena.tif')
 residual_image_Y, residual_image_CbCr = three_pixels_predictor(lena_img, subsample_color_channels=False)
 merged_residuals = np.concatenate([residual_image_Y.ravel(), residual_image_CbCr.ravel()])
 pmf = stats_marg(merged_residuals, np.arange(-255,255))

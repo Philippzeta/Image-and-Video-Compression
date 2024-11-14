@@ -19,7 +19,7 @@ def stats_marg(image, pixel_range):
     image = image * 1.0
 
     # YOUR CODE STARTS HERE
-    # Flatten the image
+
     image_flattened = image.flatten()
 
     # Calculate histogram

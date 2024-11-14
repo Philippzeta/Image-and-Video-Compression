@@ -8,8 +8,8 @@ from ivclab.image import single_pixel_predictor, three_pixels_predictor
 class TestProbability(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.orig_img = imread('data/satpic1.bmp')
-        self.ref_img = imread('data/lena.tif')
+        self.orig_img = imread('../data/satpic1.bmp')
+        self.ref_img = imread('../data/lena.tif')
         return super().setUp()
     
     def test_correct_entropy(self) -> None:
@@ -26,7 +26,7 @@ class TestProbability(unittest.TestCase):
 class TestEntropy(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.orig_img = imread('data/satpic1.bmp')
+        self.orig_img = imread('../data/satpic1.bmp')
         return super().setUp()
     
     def test_correct_joint_entropy(self) -> None:
@@ -41,7 +41,7 @@ class TestEntropy(unittest.TestCase):
 class TestPredictive(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.orig_img = imread('data/sail.tif')
+        self.orig_img = imread('../data/sail.tif')
         return super().setUp()
     
     def test_correct_single_pixel_predictor_coding(self) -> None:

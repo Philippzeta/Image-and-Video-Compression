@@ -13,7 +13,7 @@ all_pmfs = list()
 
 # read images to compute pmfs and common_pmf
 for image_name in image_names:
-    img = imread(f'data/{image_name}')
+    img = imread(f'../../data/{image_name}')
     pmf_img = stats_marg(img, np.arange(256))
     all_pmfs.append(pmf_img)
 

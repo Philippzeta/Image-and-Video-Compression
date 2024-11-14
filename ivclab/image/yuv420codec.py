@@ -64,8 +64,7 @@ def yuv420compression(image: np.ndarray):
     image: np.array of shape [H, W, C]
 
     returns 
-        output_image: np.array of shape [H, W, C]
-    """
+        output_image: np.array of shape [H, W, C]    """
     # Cast image to floating point
     image = image * 1.0
 
