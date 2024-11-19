@@ -72,6 +72,7 @@ def _predict_from_neighbors(original, coefficients):
     residual_error = np.copy(reconstruction)
 
     # YOUR CODE STARTS HERE
+
     for row in range(1, H):
         for col in range(1, W):
             for channel in range(C):
@@ -81,9 +82,7 @@ def _predict_from_neighbors(original, coefficients):
                 top_left = reconstruction[row - 1, col - 1, channel]
 
                 # Calculate the prediction based on neighbors cannot be realized
-                predicted_value = (coefficients[0] * left +
-                                   coefficients[1] * above +
-                                   coefficients[2] * top_left)
+                predicted_value = (coefficients[0] * left + coefficients[1] * top_left + coefficients[2] * above)
 
                 # Calculate the residual error
                 residual_error[row, col, channel] = round(original[row, col, channel] - predicted_value)
