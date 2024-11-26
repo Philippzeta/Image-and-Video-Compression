@@ -10,7 +10,7 @@ class TestMeasurements(unittest.TestCase):
     
     def test_correct_mse(self) -> None:
         mse = calc_mse(self.orig_img, self.recon_img)
-        self.assertAlmostEqual(mse, 1849.6111, delta=2.0)
+        self.assertAlmostEqual(mse, 1849.6111, delta=0.2)
         
     def test_correct_psnr(self) -> None:
         psnr = calc_psnr(self.orig_img, self.recon_img)

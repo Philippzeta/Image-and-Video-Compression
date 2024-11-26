@@ -10,14 +10,8 @@ recon_image = yuv420compression(image)
 psnr_recon = calc_psnr(image, recon_image)
 
 
-# Calculate bitrate based on the compressed image
-compressed_size = recon_image.size * 8  # Reconstructed image size in bits (assuming 8 bits per channel)
-
-# Bitrate calculation (bits per pixel)
-bitrate = compressed_size / (image.shape[0] * image.shape[1])
-
 print(f"Reconstructed image, not prefiltered, PSNR = {psnr_recon:.2f} dB")
-print(f"Bitrate of the compressed image = {bitrate:.2f} bits per pixel")
+
 
 # Plot original and reconstructed images side by side
 fig, axes = plt.subplots(1, 2, figsize=(12, 6))
