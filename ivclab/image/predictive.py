@@ -107,7 +107,7 @@ def three_pixels_predictor(image, subsample_color_channels=False):
 
     image: np.array of shape [H, W, C]
 
-    returns 
+    returns
         residual_image_Y: np.array of shape [H, W, 1]
         residual_image_CbCr: np.array of shape [H, W, 2] (or [H // 2, W // 2, 2] if subsampled)
     """
@@ -140,15 +140,110 @@ def three_pixels_predictor(image, subsample_color_channels=False):
     residual_image_Cb = _predict_from_neighbors(Cb_channel, coefficients_CbCr)
     residual_image_Cr = _predict_from_neighbors(Cr_channel, coefficients_CbCr)
 
+
+    # Stack Cb and Cr together
+    residual_image_CbCr = np.concatenate([residual_image_Cb, residual_image_Cr], axis=2)  # 变成 [H, W, 2]
     # Stack Cb and Cr together if not subsampled, else keep separate
-    if subsample_color_channels:
-        residual_image_CbCr = np.concatenate([residual_image_Cb, residual_image_Cr], axis=-1)
-    else:
-        residual_image_CbCr = np.stack([residual_image_Cb, residual_image_Cr], axis=-1)
+    #if subsample_color_channels:
+        #residual_image_CbCr = np.concatenate([residual_image_Cb, residual_image_Cr], axis=-1)
+    #else:
+        #residual_image_CbCr = np.stack([residual_image_Cb, residual_image_Cr], axis=-1)
 
     # YOUR CODE ENDS HERE
 
     residual_image_Y = np.round(np.clip(residual_image_Y, -255, 255)).astype(np.int32)
     residual_image_CbCr = np.round(np.clip(residual_image_CbCr, -255, 255)).astype(np.int32)
 
+    # 添加调试信息
+    print("\nPrediction Debug:")
+    print(f"Y prediction range: [{Y_channel.min()}, {Y_channel.max()}]")
+    print(f"Y residual range: [{residual_image_Y.min()}, {residual_image_Y.max()}]")
+    print(f"CbCr prediction range: [{Cb_channel.min()}, {Cb_channel.max()}], [{Cr_channel.min()}, {Cr_channel.max()}]")
+    print(f"CbCr residual range: [{residual_image_CbCr[:,:,0].min()}, {residual_image_CbCr[:,:,0].max()}], "
+          f"[{residual_image_CbCr[:,:,1].min()}, {residual_image_CbCr[:,:,1].max()}]")
+
     return residual_image_Y, residual_image_CbCr
+
+
+##########################new
+def inverse_three_pixels_predictor(residual_Y, residual_CbCr, original_shape, subsample_color_channels=False):
+    """
+    将残差数据转换回原始图像
+
+    Args:
+        residual_Y: Y通道的残差数据，形状为 [H, W, 1]
+        residual_CbCr: CbCr通道的残差数据，形状为 [H, W, 2]
+        original_shape: 原始图像的形状 [H, W, 3]
+        subsample_color_channels: 是否对色度通道进行二次采样
+
+    Returns:
+        reconstructed_image: 重建后的RGB图像，形状为 [H, W, 3]
+    """
+    height, width = original_shape[:2]
+    reconstructed_ycbcr = np.zeros(original_shape, dtype=np.float32)
+
+    coefficients_Y = [7 / 8, -4 / 8, 5 / 8]
+    coefficients_CbCr = [3 / 8, -2 / 8, 7 / 8]
+
+    # 重建Y通道
+    # 第一个像素需要特殊处理，因为它没有预测值
+    reconstructed_ycbcr[0, 0, 0] = np.clip(float(residual_Y[0, 0, 0]), 0, 255)
+
+    # 第一行其他像素
+    for j in range(1, width):
+        pred = coefficients_Y[0] * reconstructed_ycbcr[0, j - 1, 0]
+        reconstructed_ycbcr[0, j, 0] = pred + float(residual_Y[0, j, 0])
+        reconstructed_ycbcr[0, j, 0] = np.clip(reconstructed_ycbcr[0, j, 0], 0, 255)  # 及时裁剪
+
+    # 其他行的第一个像素
+    for i in range(1, height):
+        pred = coefficients_Y[2] * reconstructed_ycbcr[i - 1, 0, 0]
+        reconstructed_ycbcr[i, 0, 0] = pred + float(residual_Y[i, 0, 0])
+        reconstructed_ycbcr[i, 0, 0] = np.clip(reconstructed_ycbcr[i, 0, 0], 0, 255)  # 及时裁剪
+
+    # 其他所有像素
+    for i in range(1, height):
+        for j in range(1, width):
+            left = reconstructed_ycbcr[i, j - 1, 0]
+            top = reconstructed_ycbcr[i - 1, j, 0]
+            top_left = reconstructed_ycbcr[i - 1, j - 1, 0]
+            pred = (coefficients_Y[0] * left +
+                    coefficients_Y[1] * top_left +
+                    coefficients_Y[2] * top)
+            reconstructed_ycbcr[i, j, 0] = pred + float(residual_Y[i, j, 0])
+            reconstructed_ycbcr[i, j, 0] = np.clip(reconstructed_ycbcr[i, j, 0], 0, 255)  # 及时裁剪
+
+    # 重建Cb和Cr通道
+    for c in range(2):
+        # 第一个像素需要特殊处理
+        reconstructed_ycbcr[0, 0, c + 1] = np.clip(float(residual_CbCr[0, 0, c]), -128, 127)
+
+        # 第一行其他像素
+        for j in range(1, width):
+            pred = coefficients_CbCr[0] * reconstructed_ycbcr[0, j - 1, c + 1]
+            reconstructed_ycbcr[0, j, c + 1] = pred + float(residual_CbCr[0, j, c])
+            reconstructed_ycbcr[0, j, c + 1] = np.clip(reconstructed_ycbcr[0, j, c + 1], -128, 127)  # 及时裁剪
+
+        # 其他行的第一个像素
+        for i in range(1, height):
+            pred = coefficients_CbCr[2] * reconstructed_ycbcr[i - 1, 0, c + 1]
+            reconstructed_ycbcr[i, 0, c + 1] = pred + float(residual_CbCr[i, 0, c])
+            reconstructed_ycbcr[i, 0, c + 1] = np.clip(reconstructed_ycbcr[i, 0, c + 1], -128, 127)  # 及时裁剪
+
+        # 其他所有像素
+        for i in range(1, height):
+            for j in range(1, width):
+                left = reconstructed_ycbcr[i, j - 1, c + 1]
+                top = reconstructed_ycbcr[i - 1, j, c + 1]
+                top_left = reconstructed_ycbcr[i - 1, j - 1, c + 1]
+                pred = (coefficients_CbCr[0] * left +
+                        coefficients_CbCr[1] * top_left +
+                        coefficients_CbCr[2] * top)
+                reconstructed_ycbcr[i, j, c + 1] = pred + float(residual_CbCr[i, j, c])
+                reconstructed_ycbcr[i, j, c + 1] = np.clip(reconstructed_ycbcr[i, j, c + 1], -128, 127)  # 及时裁剪
+
+    # 将YCbCr转换回RGB
+    reconstructed_rgb = ycbcr2rgb(reconstructed_ycbcr)
+    reconstructed_rgb = np.clip(reconstructed_rgb, 0, 255)
+
+    return reconstructed_rgb

@@ -3,9 +3,9 @@ from ivclab.quantization.quantizers import uniquant, inv_uniquant
 import numpy as np
 import matplotlib.pyplot as plt
 
-# read images
-img_lena = np.double(imread('data/lena.tif'))
-img_small = np.double(imread('data/lena_small.tif'))
+# read images  f'../../data/lena_small.tif'
+img_lena = np.double(imread('../../data/lena.tif'))
+img_small = np.double(imread('../../data/lena_small.tif'))
 
 
 # Initialize lists to store quantized images
@@ -68,3 +68,16 @@ for b in bits:
 # Print results
 print("PSNR for lena_small:", PSNR_small)
 print("PSNR for lena:", PSNR)
+
+
+# 3-1d
+plt.figure(figsize=(10, 6))
+plt.plot(bits, PSNR_small, 'b-o', label='lena_small.tif', linewidth=2, markersize=8)
+plt.plot(bits, PSNR, 'r-o', label='lena.tif', linewidth=2, markersize=8)
+plt.xlabel('Rate (bits/pixel)')
+plt.ylabel('PSNR (dB)')
+plt.title('Rate-Distortion Curve for Uniform Quantization')
+plt.grid(True)
+plt.legend()
+
+plt.show()

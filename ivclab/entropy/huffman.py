@@ -58,22 +58,6 @@ class HuffmanCoder:
         min_codeword_length = min(codeword_lengths)
 
         return num_codewords, max_codeword_length, min_codeword_length
-        #     encoder = constriction.symbol.QueueEncoder()
-        #     try:
-        #         encoder.encode_symbol(symbol - self.lower_bound, self.encoder_codebook)
-        #     except:
-        #         codeword_lengths.append(len(bin(compressed[0])))
-        #         continue
-        #     compressed, _ = encoder.get_compressed()
-        #     codeword_lengths.append(len(bin(compressed[0])))
-        #
-        # # Calculate number of codewords, max length, and min length
-        # num_codewords = len(codeword_lengths)
-        # max_codeword_length = max(codeword_lengths)
-        # min_codeword_length = min(codeword_lengths)
-        #
-        # return num_codewords, max_codeword_length, min_codeword_length
-
 
 if __name__ == '__main__':
     huffman = HuffmanCoder()

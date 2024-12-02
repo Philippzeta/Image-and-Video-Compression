@@ -4,8 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Example input image
-img_lena = np.double(imread('data/lena.tif'))
-img_small = np.double(imread('data/lena_small.tif'))
+img_lena = np.double(imread('../../data/lena.tif'))
+img_small = np.double(imread('../../data/lena_small.tif'))
+
 print(img_lena.shape, img_small.shape)
 bits = 3  # Example bit depth
 epsilon = 1e-5  # Convergence threshold
