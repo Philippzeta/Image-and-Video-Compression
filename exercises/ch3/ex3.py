@@ -5,7 +5,7 @@ from ivclab.entropy.huffman import HuffmanCoder
 import matplotlib.pyplot as plt
 
 # Image Loading (in Python)
-img_small = np.double(imread('data/lena_small.tif'))
+img_small = np.double(imread('../../data/lena_small.tif'))
 bits = 8
 epsilon = 0.1
 block_size = 2
@@ -26,7 +26,7 @@ huffman_coder = HuffmanCoder(lower_bound=lower_bound)
 huffman_coder.train(probs=pmf)
 
 # Process large image (lena.tif)
-img_lena = np.double(imread('data/lena.tif'))
+img_lena = np.double(imread('../../data/lena.tif'))
 qImage = apply_vector_quantizer(img_lena, clusters, block_size)
 
 # Huffman Encoding and Decoding

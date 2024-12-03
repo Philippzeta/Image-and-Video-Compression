@@ -1,5 +1,5 @@
 import numpy as np
-
+from sklearn.cluster import KMeans
 def uniquant(image: np.array, bits: np.array)->np.array:
     """
     Function corresponding to E(3-1a) in the handout. 
@@ -145,7 +145,27 @@ def vector_quantizer(image:np.array, bits: int, epsilon: float, bsize: int):
     """
     # NOTE: check the KMeans function of scikit-learn (sklearn.cluster.KMeans)
     # YOUR CODE STARTS HERE
-    raise NotImplementedError()
+    height, width, channels = image.shape
+    n_clusters = 2 ** bits
+
+    h_blocks = height // bsize
+    w_blocks = width // bsize
+
+    blocks = image.reshape(h_blocks, bsize, w_blocks, bsize, channels)
+    blocks = blocks.transpose(0, 2, 1, 3, 4)
+    vectors = blocks.reshape(-1, bsize * bsize * channels)
+
+    kmeans = KMeans(n_clusters=n_clusters,
+                    init='k-means++',
+                    tol=epsilon,
+                    n_init=10)
+
+    kmeans.fit(vectors)
+    clusters = kmeans.cluster_centers_
+    clusters = clusters.reshape(n_clusters, bsize, bsize, channels)
+
+    Temp_clusters = [clusters]  # 这里假设只记录最终的聚类中心
+
     # YOUR CODE ENDS HERE
     return clusters, Temp_clusters
 
@@ -162,12 +182,25 @@ def apply_vector_quantizer(image: np.array, clusters: np.array, bsize: int)->np.
         qImage (ndarray): Quantized image with cluster indices.
     """
     # YOUR CODE STARTS HERE
-    raise NotImplementedError()
+    height, width, channels = image.shape
+    h_blocks = height // bsize
+    w_blocks = width // bsize
+
+    # 将图像分成blocks
+    blocks = image.reshape(h_blocks, bsize, w_blocks, bsize, channels)
+    blocks = blocks.transpose(0, 2, 1, 3, 4)
+    vectors = blocks.reshape(-1, bsize * bsize * channels)
+
+    # 初始化量化图像
+    qImage = np.zeros((h_blocks, w_blocks), dtype=int)
+
+    # 对每个block找到最近的聚类中心
+    for i, vector in enumerate(vectors):
+        distances = np.linalg.norm(clusters.reshape(clusters.shape[0], -1) - vector, axis=1)
+        qImage[i // w_blocks, i % w_blocks] = np.argmin(distances)
     # YOUR CODE ENDS HERE
     
     return qImage
-
-import numpy as np
 
 def inv_vector_quantizer(qImage: np.array, clusters: np.array, block_size: int):
     """
@@ -182,7 +215,18 @@ def inv_vector_quantizer(qImage: np.array, clusters: np.array, block_size: int):
         image (ndarray): Reconstructed image.
     """
     # YOUR CODE STARTS HERE
-    raise NotImplementedError()
+    h_blocks, w_blocks = qImage.shape
+    n_clusters, bsize, _, channels = clusters.shape
+
+    # 初始化重建图像
+    image = np.zeros((h_blocks * block_size, w_blocks * block_size, channels))
+
+    # 对每个block进行重建
+    for i in range(h_blocks):
+        for j in range(w_blocks):
+            cluster_idx = qImage[i, j]
+            block = clusters[cluster_idx]
+            image[i * block_size:(i + 1) * block_size, j * block_size:(j + 1) * block_size, :] = block
     # YOUR CODE ENDS HERE
 
     return image
