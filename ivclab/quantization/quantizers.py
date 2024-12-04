@@ -55,48 +55,64 @@ def lloyd_max(image: np.array, bits: int, epsilon: float):
         clusters (ndarray): Optimal quantization levels (clusters).
     """
     # YOUR CODE STARTS HERE
-    # 1. 初始化
-    num_levels = 2 ** bits
-    num_channels = image.shape[2]  # 获取通道数
+    # 初始化
+    M = 2 ** bits  # number of representatives
+    partition_size = 256 / M
+    rep = np.arange(partition_size / 2, 256, partition_size)
+    codeBook = np.zeros((M, 3))
+    codeBook[:, 0] = rep
+    d = [9999]  # stored distortion
+    sz = image.shape
 
-    # 为每个通道创建聚类中心
-    clusters = np.zeros((num_channels, num_levels))
-    qImage = np.zeros_like(image, dtype=int)
+    while True:
+        d_quad = 0
+        for channel in range(3):
+            pixel_value = image[:, :, channel].flatten()
 
-    # 对每个通道分别进行Lloyd-Max量化
-    for channel in range(num_channels):
-        # 初始化当前通道的聚类中心（均匀分布）
-        clusters[channel] = np.linspace(0, 255, num_levels)
+            # 计算距离并找到最近的代表值
+            distances = np.abs(codeBook[:, 0, np.newaxis] - pixel_value)
+            I = np.argmin(distances, axis=0)
+            D = distances[I, np.arange(len(pixel_value))]
 
-        # 获取当前通道的像素值
-        pixels = image[:, :, channel].flatten()
+            # 更新codebook
+            for kk in range(len(pixel_value)):
+                index = I[kk]
+                codeBook[index, 1] += pixel_value[kk]
+                codeBook[index, 2] += 1
 
-        # 2. 迭代优化
-        while True:
-            old_clusters = clusters[channel].copy()
+            d_quad += np.sum(D ** 2)
 
-            # 2.1 分配阶段：将像素分配到最近的聚类中心
-            distances = np.abs(pixels[:, np.newaxis] - clusters[channel])
-            labels = np.argmin(distances, axis=1)
+        # 更新和重置codebook
+        index_zeroUpdate = np.where(codeBook[:, 2] == 0)[0]
+        if len(index_zeroUpdate) > 0:
+            # 处理空单元格
+            for k in index_zeroUpdate:
+                index_max = np.argmax(codeBook[:, 2])
+                count_max = codeBook[index_max, 2]
+                codeBook[index_max, 2] = np.ceil(count_max / 2)
+                codeBook[k, 2] = count_max - codeBook[index_max, 2]
+                codeBook[k, 1] = codeBook[index_max, 1] + 1
 
-            # 2.2 更新阶段：更新聚类中心
-            for i in range(num_levels):
-                if np.sum(labels == i) > 0:  # 非空聚类
-                    clusters[channel, i] = np.mean(pixels[labels == i])
-                else:  # 处理空聚类
-                    max_cluster_idx = np.argmax(np.bincount(labels))
-                    max_cluster_pixels = pixels[labels == max_cluster_idx]
-                    clusters[channel, i] = np.mean(max_cluster_pixels[:len(max_cluster_pixels) // 2])
-                    clusters[channel, max_cluster_idx] = np.mean(max_cluster_pixels[len(max_cluster_pixels) // 2:])
+        # 更新代表值
+        mask = codeBook[:, 2] != 0
+        codeBook[mask, 0] = codeBook[mask, 1] / codeBook[mask, 2]
+        codeBook[:, 1:] = 0
 
-            # 2.3 检查收敛条件
-            if np.max(np.abs(clusters[channel] - old_clusters)) < epsilon:
-                break
+        # 检查停止条件
+        d.append(d_quad)
+        J = abs(d[-1] - d[-2]) / d[-1]
+        if J < epsilon:
+            break
 
-        # 3. 量化当前通道的图像
-        distances = np.abs(image[:, :, channel][:, :, np.newaxis] - clusters[channel])
-        qImage[:, :, channel] = np.argmin(distances, axis=2)
+    # 量化图像
+    qImage = np.zeros(sz, dtype=int)
+    for channel in range(3):
+        pixel_value = image[:, :, channel]
+        distances = np.abs(codeBook[:, 0, np.newaxis] - pixel_value.flatten())
+        I = np.argmin(distances, axis=0)
+        qImage[:, :, channel] = I.reshape(sz[:2])
 
+    clusters = codeBook[:, 0]
     # YOUR CODE ENDS HERE
 
     return qImage, clusters
@@ -116,21 +132,22 @@ def inv_lloyd_max(qImage: np.array, clusters: np.array)->np.array:
     """
     
     # YOUR CODE STARTS HERE
+    numRep = len(clusters)
+    sz = qImage.shape
+    image = np.zeros(sz)
 
-    height, width, channels = qImage.shape
-    image = np.zeros((height, width, channels))
-
-    # 对每个通道分别进行重建
-    for c in range(channels):
-        # 使用对应通道的聚类中心进行重建
-        image[:, :, c] = clusters[c, qImage[:, :, c]]
-
-    image = np.clip(image, 0, 255)
+    for channel in range(3):
+        quantized = np.zeros(sz[0] * sz[1])
+        for i in range(numRep):
+            pixel_value = qImage[:, :, channel].flatten()
+            index = np.where(pixel_value == i)[0]
+            quantized[index] = clusters[i]
+        image[:, :, channel] = quantized.reshape(sz[:2])
     # YOUR CODE ENDS HERE
     return image
-
+"""
 def vector_quantizer(image:np.array, bits: int, epsilon: float, bsize: int):
-    """
+    
     Perform vector quantization on an image using block-based processing.
 
     Parameters:
@@ -142,35 +159,51 @@ def vector_quantizer(image:np.array, bits: int, epsilon: float, bsize: int):
     Returns:
         clusters (ndarray): Final codebook (quantization levels).
         Temp_clusters (list of ndarray): Codebooks at each iteration.
-    """
+    
     # NOTE: check the KMeans function of scikit-learn (sklearn.cluster.KMeans)
     # YOUR CODE STARTS HERE
-    height, width, channels = image.shape
-    n_clusters = 2 ** bits
+    # 1. 确保图像数据类型为float64，与MATLAB保持一致
+    image = image.astype(np.float64)
 
+    height, width, channels = image.shape
     h_blocks = height // bsize
     w_blocks = width // bsize
 
-    blocks = image.reshape(h_blocks, bsize, w_blocks, bsize, channels)
-    blocks = blocks.transpose(0, 2, 1, 3, 4)
-    vectors = blocks.reshape(-1, bsize * bsize * channels)
+    # 2. 将图像分成块，保持与MATLAB相同的处理顺序
+    blocks = []
+    for i in range(0, height - bsize + 1, bsize):
+        for j in range(0, width - bsize + 1, bsize):
+            block = image[i:i + bsize, j:j + bsize, :].copy()
+            blocks.append(block.reshape(-1))
+    blocks = np.array(blocks)
 
-    kmeans = KMeans(n_clusters=n_clusters,
-                    init='k-means++',
-                    tol=epsilon,
-                    n_init=10)
+    # 3. 使用KMeans训练codebook
+    n_clusters = 2 ** bits
+    kmeans = KMeans(
+        n_clusters=n_clusters,
+        tol=epsilon,
+        init='random',  # 使用random初始化
+        n_init=1,  # 单次运行
+        max_iter=300,
+        random_state=42
+    )
 
-    kmeans.fit(vectors)
+    # 4. 训练并获取聚类中心
+    kmeans.fit(blocks)
     clusters = kmeans.cluster_centers_
-    clusters = clusters.reshape(n_clusters, bsize, bsize, channels)
 
-    Temp_clusters = [clusters]  # 这里假设只记录最终的聚类中心
+    # 5. 按照能量排序聚类中心
+    energy = np.sum(clusters ** 2, axis=1)
+    sorted_idx = np.argsort(energy)
+    clusters = clusters[sorted_idx]
 
+    Temp_clusters = [clusters]
     # YOUR CODE ENDS HERE
     return clusters, Temp_clusters
 
+    
 def apply_vector_quantizer(image: np.array, clusters: np.array, bsize: int)->np.array:
-    """
+    
     Apply the vector quantization to an image using a pre-trained codebook (clusters).
 
     Parameters:
@@ -180,30 +213,42 @@ def apply_vector_quantizer(image: np.array, clusters: np.array, bsize: int)->np.
 
     Returns:
         qImage (ndarray): Quantized image with cluster indices.
-    """
+    
     # YOUR CODE STARTS HERE
+    # 1. 确保图像数据类型一致
+    image = image.astype(np.float64)
+
     height, width, channels = image.shape
     h_blocks = height // bsize
     w_blocks = width // bsize
 
-    # 将图像分成blocks
-    blocks = image.reshape(h_blocks, bsize, w_blocks, bsize, channels)
-    blocks = blocks.transpose(0, 2, 1, 3, 4)
-    vectors = blocks.reshape(-1, bsize * bsize * channels)
+    # 2. 将图像分成块，保持相同的处理顺序
+    blocks = []
+    for i in range(0, height - bsize + 1, bsize):
+        for j in range(0, width - bsize + 1, bsize):
+            block = image[i:i + bsize, j:j + bsize, :].copy()
+            blocks.append(block.reshape(-1))
+    blocks = np.array(blocks)
 
-    # 初始化量化图像
-    qImage = np.zeros((h_blocks, w_blocks), dtype=int)
+    # 3. 计算每个块到聚类中心的距离
+    distances = np.zeros((len(blocks), len(clusters)))
+    for i, cluster in enumerate(clusters):
+        diff = blocks - cluster
+        distances[:, i] = np.sum(diff ** 2, axis=1)
 
-    # 对每个block找到最近的聚类中心
-    for i, vector in enumerate(vectors):
-        distances = np.linalg.norm(clusters.reshape(clusters.shape[0], -1) - vector, axis=1)
-        qImage[i // w_blocks, i % w_blocks] = np.argmin(distances)
+    # 4. 找到最近的聚类中心
+    indices = np.argmin(distances, axis=1)
+    qImage = indices.reshape(h_blocks, w_blocks)
+
+    # 保存维度信息
+    global _block_dimensions
+    _block_dimensions = (h_blocks, w_blocks)
     # YOUR CODE ENDS HERE
     
     return qImage
 
 def inv_vector_quantizer(qImage: np.array, clusters: np.array, block_size: int):
-    """
+    
     Reconstruct an image from a quantized image using a pre-trained codebook (clusters).
 
     Parameters:
@@ -213,20 +258,157 @@ def inv_vector_quantizer(qImage: np.array, clusters: np.array, block_size: int):
 
     Returns:
         image (ndarray): Reconstructed image.
-    """
+    
     # YOUR CODE STARTS HERE
-    h_blocks, w_blocks = qImage.shape
-    n_clusters, bsize, _, channels = clusters.shape
+    # 1. 处理量化索引
+    if qImage.ndim == 1:
+        global _block_dimensions
+        h_blocks, w_blocks = _block_dimensions
+        qImage = qImage.reshape(h_blocks, w_blocks)
+    else:
+        h_blocks, w_blocks = qImage.shape
 
-    # 初始化重建图像
-    image = np.zeros((h_blocks * block_size, w_blocks * block_size, channels))
+    # 2. 计算图像尺寸
+    height = h_blocks * block_size
+    width = w_blocks * block_size
+    channels = clusters.shape[1] // (block_size * block_size)
 
-    # 对每个block进行重建
+    # 3. 重建图像
+    image = np.zeros((height, width, channels), dtype=np.float64)
     for i in range(h_blocks):
         for j in range(w_blocks):
-            cluster_idx = qImage[i, j]
-            block = clusters[cluster_idx]
-            image[i * block_size:(i + 1) * block_size, j * block_size:(j + 1) * block_size, :] = block
+            idx = qImage[i, j]
+            block = clusters[idx].reshape(block_size, block_size, channels)
+            image[i * block_size:(i + 1) * block_size,
+            j * block_size:(j + 1) * block_size, :] = block
+
+    # 4. 确保像素值在正确范围内
+    image = np.clip(image, 0, 255)
+
     # YOUR CODE ENDS HERE
+    return image
+"""
+
+
+def vector_quantizer(image: np.array, bits: int, epsilon: float, bsize: int):
+    """
+    为每个通道分别训练码本
+    Parameters:
+        image: 输入图像 [H, W, C]
+        bits: 量化位数
+        epsilon: 收敛阈值
+        bsize: 块大小
+    Returns:
+        clusters: 每个通道的VQ Table [C, n_clusters, block_size^2]
+        Temp_clusters: 训练过程中的码本
+    """
+    height, width, channels = image.shape
+    n_clusters = 2 ** bits
+
+    # 为每个通道准备单独的码本
+    all_clusters = []
+    all_temp_clusters = []
+
+    # 对每个通道分别训练
+    for channel in range(channels):
+        # 准备当前通道的训练数据
+        channel_blocks = []
+        for i in range(0, height - bsize + 1, bsize):
+            for j in range(0, width - bsize + 1, bsize):
+                block = image[i:i + bsize, j:j + bsize, channel].reshape(-1)
+                channel_blocks.append(block)
+        channel_blocks = np.array(channel_blocks)
+
+        # 使用KMeans训练当前通道的码本
+        kmeans = KMeans(
+            n_clusters=n_clusters,
+            tol=epsilon,
+            random_state=42,
+            n_init=1
+        )
+        kmeans.fit(channel_blocks)
+
+        # 保存当前通道的码本
+        all_clusters.append(kmeans.cluster_centers_)
+        all_temp_clusters.append([kmeans.cluster_centers_])
+
+    # 将所有通道的码本组合
+    clusters = np.array(all_clusters)  # shape: [C, n_clusters, block_size^2]
+    Temp_clusters = all_temp_clusters  # list of length C
+
+    return clusters, Temp_clusters
+
+
+def apply_vector_quantizer(image: np.array, clusters: np.array, bsize: int) -> np.array:
+    """
+    使用每个通道的码本进行量化
+    Parameters:
+        image: 输入图像 [H, W, C]
+        clusters: 每个通道的码本 [C, n_clusters, block_size^2]
+        bsize: 块大小
+    Returns:
+        qImage: 量化后的图像索引 [H/bsize, W/bsize, C]
+    """
+    height, width, channels = image.shape
+    num_row = height // bsize
+    num_col = width // bsize
+
+    # 初始化输出
+    qImage = np.zeros((num_row, num_col, channels), dtype=np.int32)
+
+    # 对每个通道分别处理
+    for channel in range(channels):
+        # 提取当前通道的块
+        blocks = []
+        for i in range(0, height - bsize + 1, bsize):
+            for j in range(0, width - bsize + 1, bsize):
+                block = image[i:i + bsize, j:j + bsize, channel].reshape(-1)
+                blocks.append(block)
+        blocks = np.array(blocks)
+
+        # 使用当前通道的码本
+        channel_clusters = clusters[channel]
+
+        # 找到最近的码字
+        distances = np.sum((blocks[:, np.newaxis, :] - channel_clusters) ** 2, axis=2)
+        indices = np.argmin(distances, axis=1)
+
+        # 重塑为所需维度
+        qImage[:, :, channel] = indices.reshape(num_row, num_col)
+
+    return qImage
+
+
+def inv_vector_quantizer(qImage: np.array, clusters: np.array, block_size: int) -> np.array:
+    """
+    使用每个通道的码本重建图像
+    Parameters:
+        qImage: 量化索引图像 [H/block_size, W/block_size, C]
+        clusters: 每个通道的码本 [C, n_clusters, block_size^2]
+        block_size: 块大小
+    Returns:
+        image: 重建后的图像 [H, W, C]
+    """
+    height, width, channels = qImage.shape
+    original_height = height * block_size
+    original_width = width * block_size
+
+    # 初始化输出图像
+    image = np.zeros((original_height, original_width, channels))
+
+    # 对每个通道分别处理
+    for channel in range(channels):
+        # 获取当前通道的量化索引和码本
+        channel_qimage = qImage[:, :, channel]
+        channel_clusters = clusters[channel]
+
+        # 重建当前通道
+        for i in range(height):
+            for j in range(width):
+                cluster_idx = channel_qimage[i, j]
+                block = channel_clusters[cluster_idx].reshape(block_size, block_size)
+                image[i * block_size:(i + 1) * block_size,
+                j * block_size:(j + 1) * block_size,
+                channel] = block
 
     return image
