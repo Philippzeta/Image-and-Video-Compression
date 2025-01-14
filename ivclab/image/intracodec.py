@@ -19,6 +19,7 @@ class IntraCodec:
         self.zigzag = ZigZag()
         self.zerorun = ZeroRunCoder(end_of_block=end_of_block, block_size= block_shape[0] * block_shape[1])
         self.huffman = HuffmanCoder(lower_bound=bounds[0])
+        self.symbols_no=0
 
     def image2symbols(self, img: np.array):
         """
@@ -100,7 +101,7 @@ class IntraCodec:
 
         # 2. 计算符号的概率分布
         symbols_array = np.array(symbols)
-        prob_dist = stats_marg(symbols_array, pixel_range=5000)
+        prob_dist = stats_marg(symbols_array, pixel_range=np.arange(-1000,4002))
 
         # 3. 训练Huffman编码器
         self.huffman.train(prob_dist)
@@ -119,11 +120,9 @@ class IntraCodec:
         # YOUR CODE STARTS HERE
         # 1. 将图像转换为符号
         symbols = self.image2symbols(img)
-
+        self.symbols_no= len(symbols)
         # 2. 使用Huffman编码器进行编码
-        compressed, _ = self.huffman.encode(symbols)
-        # 3. 确保返回的是列表形式
-        bitstream = compressed.astype(np.uint8).tolist()  # 转换为uint8类型再转列表
+        bitstream, _ = self.huffman.encode(symbols)
         # YOUR CODE ENDS HERE
         return bitstream
 
@@ -144,8 +143,8 @@ class IntraCodec:
 
         # 2. 使用Huffman解码器解码
         # 确保输入格式正确
-        compressed = np.array(bitstream, dtype=np.uint8)  # 使用uint8类型
-        symbols = self.huffman.decode(compressed, message_length=expected_symbols)
+
+        symbols = self.huffman.decode(bitstream, self.symbols_no)
 
         # 3. 从符号重建图像
         reconstructed_img = self.symbols2image(symbols, original_shape)

@@ -23,7 +23,7 @@ class ZeroRunCoder:
             encoded: List of symbols that represent the original elements
         
         """
-        flat_img = rearrange(flat_patch_img, 'h w c p -> (h w c) p', p=self.block_size)
+
         # YOUR CODE STARTS HERE
         flat_img = rearrange(flat_patch_img, 'h w c p -> (h w c) p', p=self.block_size)
         encoded = []
