@@ -2,32 +2,48 @@
 # Report the PSNR and bpp of the compressed image.
 # Use q_scale of 0.15 and bounds of (-1000, 4000).
 import numpy as np
+import matplotlib.pyplot as plt
 from ivclab.image import IntraCodec
 from ivclab.utils import imread, calc_psnr
 
-# 1. 读取训练和测试图像
+# 1. read and train
 lena_small = np.double(imread(f'../../data/lena_small.tif'))
-foreman0022 = np.double(imread(f'../../videodata/foreman0022.bmp'))
-# 2
+foreman0020 = np.double(imread(f'../../videodata/foreman0020.bmp.'))
 codec = IntraCodec()
-# 3. 使用lena_small训练Huffman编码器
+# 3. use lena_small train
 train_symbols = codec.image2symbols(lena_small)
 codec.train_huffman_from_image(lena_small)
 
-# 4. 压缩lena图像得到比特流
-test_symbols = codec.image2symbols(foreman0022)
-bitstream = codec.intra_encode(foreman0022)
+# 4. get bitstream
+test_symbols = codec.image2symbols(foreman0020)
+bitstream = codec.intra_encode(foreman0020)
 
-# 5. 从比特流解码重建图像
-reconstructed_img = codec.intra_decode(bitstream, foreman0022.shape)
+# 5. recon
+reconstructed_img = codec.intra_decode(bitstream, foreman0020.shape)
 
-# 6. 计算PSNR
-psnr = calc_psnr(foreman0022, reconstructed_img)
+# 6. PSNR
+psnr = calc_psnr(foreman0020, reconstructed_img)
 
-# 7. 计算比特率
-total_bits = len(bitstream)*8*4
-total_pixels = foreman0022.shape[0] * foreman0022.shape[1]
-bitrate = total_bits / total_pixels
+# 7. bbp
+total_bits = len(bitstream)*8
+total_pixels = foreman0020.shape[0] * foreman0020.shape[1]
+pixel_number = total_pixels/3
+bitrate = total_bits /pixel_number
 
 print(f"PSNR: {psnr:.2f} dB")
 print(f"Bitrate: {bitrate:.2f} bits/pixel")
+
+plt.figure(figsize=(12, 6))
+
+plt.subplot(121)
+plt.imshow(foreman0020/255.0)  # NOR
+plt.title('Original Image')
+plt.axis('off')
+
+plt.subplot(122)
+plt.imshow(reconstructed_img/255.0)  # NOR
+plt.title(f'Reconstructed (PSNR: {psnr:.2f}dB)')
+plt.axis('off')
+
+plt.tight_layout()
+plt.show()

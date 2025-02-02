@@ -1,11 +1,7 @@
 import numpy as np
 
 class PatchQuant:
-    """
-    An object that handles forward and inverse quantization 
-    of a patched image where each pixel of the patch is quantized
-    with different values depending on the given matrices
-    """
+
 
     def __init__(self, quantization_scale = 1.0, luminance = None, chrominance = None):
         self.quantization_scale = quantization_scale
@@ -42,17 +38,7 @@ class PatchQuant:
         return quantization_table
 
     def quantize(self, patched_img):
-        """
-        Takes a patchified image and applies quantization on the 
-        luminance and chrominance channels. Make sure to call get_quantization_table to 
-        compute the correctly scaled table before dividing input values with them. 
-        The returned values must contain rounded integers.
 
-        patched_img: np.array of shape [H_patch, W_patch, C, H_window, W_window]
-
-        returns:
-            quantized_img: np.array of shape [H_patch, W_patch, C, H_window, W_window]
-        """
         # YOUR CODE STARTS HERE
         quant_table = self.get_quantization_table()
         quantized_img = np.round(patched_img / quant_table[None, None, :, :, :])
@@ -60,17 +46,7 @@ class PatchQuant:
         return quantized_img.astype(np.int32)
     
     def dequantize(self, patched_img):
-        """
-        Takes a patchified and quantized image and applies dequantization on the 
-        luminance and chrominance channels. Make sure to call get_quantization_table to 
-        compute the correctly scaled table before multiplying input values with them. 
-        The returned values must contain rounded integers.
 
-        quantized_img: np.array of shape [H_patch, W_patch, C, H_window, W_window]
-
-        returns:
-            patched_img: np.array of shape [H_patch, W_patch, C, H_window, W_window]
-        """
         # YOUR CODE STARTS HERE
         quant_table = self.get_quantization_table()
         quantized_img = patched_img * quant_table[None, None, :, :, :]

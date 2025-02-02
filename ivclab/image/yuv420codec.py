@@ -2,14 +2,7 @@ import numpy as np
 from scipy.signal import decimate, resample
 
 def rgb2ycbcr(image: np.array):
-    """
-    Converts an RGB image to its YCbCr version.
 
-    image: np.array of shape [H, W, 3]
-
-    returns
-        output_image: np.array of shape [H, W, 3]
-    """
     output_image = np.zeros_like(image)
     R = image[:, :, 0]
     G = image[:, :, 1]
@@ -25,14 +18,7 @@ def rgb2ycbcr(image: np.array):
     return output_image
 
 def ycbcr2rgb(image: np.array):
-    """
-    Converts an YCbCr image to its RGB version.
 
-    image: np.array of shape [H, W, 3]
-
-    returns
-        output_image: np.array of shape [H, W, 3]
-    """
     output_image = np.zeros_like(image)
     Y = image[:, :, 0]
     Cb = image[:, :, 1]
@@ -47,24 +33,7 @@ def ycbcr2rgb(image: np.array):
     output_image[:, :, 2] = np.clip(B, 0, 255)
     return output_image
 def yuv420compression(image: np.ndarray):
-    """
-    Steps:
-    1. Convert an image from RGB to YCbCr
-    2. Compress the image
-        A. Pad the image with 4 pixels symmetric pixels on each side
-        B. Downsample only Cb and Cr channels with prefiltering (use scipy.signal.decimate for it)
-        C. Crop the image 2 pixels from each side to get rid of padding
-    3. Apply rounding to Y, Cb and Cr channels
-    4. Decompress the image
-        A. Pad the image with 2 pixels symmetric pixels on each side
-        B. Upsample Cb and Cr channels (use scipy.signal.resample for it)
-        C. Crop the image 4 pixels from each side to get rid of padding
-    5. Convert the YCbCr image back to RGB
 
-    image: np.array of shape [H, W, C]
-
-    returns 
-        output_image: np.array of shape [H, W, C]    """
     # Cast image to floating point
     image = image * 1.0
 

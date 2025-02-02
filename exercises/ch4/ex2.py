@@ -11,9 +11,6 @@ import matplotlib.pyplot as plt
 # - Measure bitrate and PSNR on lena
 # Plot all the measurements in a Rate Distortion plot
 
-# YOUR CODE STARTS HERE
-
-# YOUR CODE ENDS HERE
 
 import numpy as np
 from ivclab.image import IntraCodec
@@ -49,9 +46,10 @@ for scale in q_scales:
 
     # 计算PSNR和比特率
     psnr = calc_psnr(lena, reconstructed_img)
-    total_bits = len(bitstream) * 8 * 4
+    total_bits = len(bitstream) * 8
     total_pixels = lena.shape[0] * lena.shape[1]
-    bitrate = total_bits / total_pixels
+    pixel_number = total_pixels / 3
+    bitrate = total_bits / pixel_number
 
     # 存储结果
     psnr_values.append(psnr)
@@ -63,14 +61,6 @@ for scale in q_scales:
 plt.figure(figsize=(10, 6))
 plt.plot(bitrate_values, psnr_values, 'bo-', linewidth=2, markersize=8)
 
-# 在每个点上标注量化尺度
-for i, scale in enumerate(q_scales):
-    plt.annotate(f'q={scale}',
-                 (bitrate_values[i], psnr_values[i]),
-                 xytext=(5, 5),
-                 textcoords='offset points')
-
-# 5. 美化图表
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.xlabel('Bitrate (bits/pixel)')
 plt.ylabel('PSNR (dB)')

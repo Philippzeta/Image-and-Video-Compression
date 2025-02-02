@@ -4,6 +4,7 @@ class MotionCompensator:
 
     def __init__(self, search_range=4):
         self.search_range = search_range
+        self.max_offset = 2 * search_range + 1
 
     def compute_motion_vector(self,ref_image, image):
         """
@@ -20,56 +21,56 @@ class MotionCompensator:
             motion_vector: np.array of shape [H / 8, W / 8, 1]
         """
         # YOUR CODE STARTS HERE
-
         H, W = image.shape
         block_size = 8
         H_blocks = H // block_size
         W_blocks = W // block_size
-        motion_vector = np.zeros((H_blocks, W_blocks, 1))
+        motion_vector = np.zeros((H_blocks, W_blocks, 1), dtype=np.int32)
 
-        # 遍历每个8x8块
+        # Create index table for motion vector encoding
+        index_table = np.arange(1, 82).reshape(9, 9).T
+
+        # Block positions
+        block_positions_x = range(0, W, block_size)
+        block_positions_y = range(0, H, block_size)
+
         for i in range(H_blocks):
             for j in range(W_blocks):
-                # 当前块的坐标
-                y = i * block_size
-                x = j * block_size
+                # Current block position
+                loc_x = block_positions_x[j]
+                loc_y = block_positions_y[i]
+                current_block = image[loc_y:loc_y + block_size, loc_x:loc_x + block_size]
 
-                # 提取当前块
-                current_block = image[y:y + block_size, x:x + block_size]
+                min_ssd = None  #
+                best_x = None  # 初始化为None
+                best_y = None
 
-                min_ssd = float('inf')
-                best_dx = 0
-                best_dy = 0
+                # Search in ±4 range
+                for ref_x in range(max(0, loc_x - self.search_range),
+                                   min(W - block_size + 1, loc_x + self.search_range + 1)):
+                    for ref_y in range(max(0, loc_y - self.search_range),
+                                       min(H - block_size + 1, loc_y + self.search_range + 1)):
+                        # Get reference block
+                        ref_block = ref_image[ref_y:ref_y + block_size, ref_x:ref_x + block_size]
 
-                # 在搜索范围内寻找最佳匹配
-                for dy in range(-self.search_range, self.search_range + 1):
-                    for dx in range(-self.search_range, self.search_range + 1):
-                        # 计算参考块的坐标
-                        ref_y = y + dy
-                        ref_x = x + dx
+                        # Calculate SSD
+                        ssd = np.sum((current_block - ref_block) ** 2)
 
-                        # 检查边界条件
-                        if (ref_y >= 0 and ref_y + block_size <= H and
-                                ref_x >= 0 and ref_x + block_size <= W):
+                        # 第一个有效块或找到更好的匹配
+                        if min_ssd is None or ssd <= min_ssd:
+                            min_ssd = ssd
+                            best_x = ref_x
+                            best_y = ref_y
 
-                            # 提取参考块
-                            ref_block = ref_image[ref_y:ref_y + block_size,
-                                        ref_x:ref_x + block_size]
+                # Convert to relative vector and get index from table
+                vector_x = best_x - loc_x + self.search_range
+                vector_y = best_y - loc_y + self.search_range
 
-                            # 计算SSD
-                            ssd = np.sum((current_block - ref_block) ** 2)
+                # Get motion vector index from the table
+                mv = index_table[vector_y, vector_x]
 
-                            # 更新最小SSD和最佳位移
-                            if ssd < min_ssd:
-                                min_ssd = ssd
-                                best_dy = dy
-                                best_dx = dx
-
-                # 将(dx,dy)转换为单一值
-                # motion_vector = y_displacement * (2 * search_range + 1) + x_displacement
-                mv = best_dy * (2 * self.search_range + 1) + best_dx
-                motion_vector[i, j, 0] = mv
-            # YOUR CODE stop HERE
+                motion_vector[i, j, 0] = mv - 1  # Subtract 1 for 0-based indexing
+                # YOUR CODE END HERE
         return motion_vector
     
     def reconstruct_with_motion_vector(self,ref_image, motion_vector):
@@ -84,43 +85,37 @@ class MotionCompensator:
             image: np.array of shape [H, W]
         """
 
-        #image = np.zeros_like(ref_image)
-
         # YOUR CODE STARTS HERE
         H, W = ref_image.shape
         block_size = 8
-        H_blocks = H // block_size
-        W_blocks = W // block_size
+        H_blocks, W_blocks = motion_vector.shape[:2]
         image = np.zeros_like(ref_image)
 
-        # 遍历每个8x8块
+        # Create index table
+        index_table = np.arange(1, 82).reshape(9, 9).T
+
         for i in range(H_blocks):
             for j in range(W_blocks):
-                # 获取当前块的运动矢量值
-                mv = motion_vector[i, j, 0]
+                # Current block position
+                loc_x = j * block_size
+                loc_y = i * block_size
 
-                # 将单一值解码回(dx,dy)位移
-                # mv = dy * (2 * search_range + 1) + dx
-                dy = mv // (2 * self.search_range + 1)
-                dx = mv % (2 * self.search_range + 1)
+                # Get motion vector and convert to relative position
+                mv = int(motion_vector[i, j, 0]) + 1  # Add 1 for 1-based indexing
+                vector_y, vector_x = np.where(index_table == mv)
+                vector_y = vector_y[0] - self.search_range  # Center to origin
+                vector_x = vector_x[0] - self.search_range
 
-                # 如果dx或dy超过search_range，说明是负位移
-                if dx > self.search_range:
-                    dx -= (2 * self.search_range + 1)
-                if dy > self.search_range:
-                    dy -= (2 * self.search_range + 1)
+                # Calculate reference position
+                ref_x = loc_x + vector_x
+                ref_y = loc_y + vector_y
 
-                # 计算当前块和参考块的坐标
-                y = i * block_size
-                x = j * block_size
-                ref_y = y + dy
-                ref_x = x + dx
+                # Ensure within bounds
+                ref_x = max(0, min(ref_x, W - block_size))
+                ref_y = max(0, min(ref_y, H - block_size))
 
-                # 检查边界条件
-                if (ref_y >= 0 and ref_y + block_size <= H and
-                        ref_x >= 0 and ref_x + block_size <= W):
-                    # 从参考帧复制对应的块
-                    image[y:y + block_size, x:x + block_size] = \
-                        ref_image[ref_y:ref_y + block_size, ref_x:ref_x + block_size]
+                # Copy block
+                image[loc_y:loc_y + block_size, loc_x:loc_x + block_size] = \
+                    ref_image[ref_y:ref_y + block_size, ref_x:ref_x + block_size]
         # YOUR CODE ENDS HERE
         return image

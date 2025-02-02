@@ -22,6 +22,7 @@ class HuffmanCoder:
 
         encoder = constriction.symbol.QueueEncoder()
         for symbol in message:
+            #print(self.lower_bound)
             encoder.encode_symbol(symbol - self.lower_bound, self.encoder_codebook)
 
         compressed, bitrate = encoder.get_compressed()

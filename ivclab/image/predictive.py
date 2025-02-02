@@ -3,18 +3,7 @@ from ivclab.signal import rgb2ycbcr, ycbcr2rgb
 from scipy.signal import decimate, resample
 
 def single_pixel_predictor(image):
-    """
-    Creates a residual image after a single pixel predictor for overlapping 
-    pixel pairs. The right pixel is predicted from the left pixel with the formula
-    R_pred = L * a1 where a1=1. This function returns the residual R - R_pred. For
-    the first pixels of each row who don't have a left neighbor, it copies the values
-    from the original image instead of making a prediction
 
-    image: np.array of shape [H, W, C]
-
-    returns 
-        residual_image: np.array of shape [H, W, C]
-    """
     # Convert image to floating points
     image = image * 1.0
 

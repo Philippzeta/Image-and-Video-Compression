@@ -28,9 +28,10 @@ reconstructed_img = codec.intra_decode(bitstream, lena.shape)
 psnr = calc_psnr(lena, reconstructed_img)
 
 # 7. 计算比特率
-total_bits = len(bitstream)*8*4
+total_bits = len(bitstream)*8
 total_pixels = lena.shape[0] * lena.shape[1]
-bitrate = total_bits / total_pixels
+pixel_number = total_pixels/3
+bitrate = total_bits /pixel_number
 
 print(f"PSNR: {psnr:.2f} dB")
 print(f"Bitrate: {bitrate:.2f} bits/pixel")

@@ -21,7 +21,7 @@ class IntraCodec:
         self.huffman = HuffmanCoder(lower_bound=bounds[0])
         self.symbols_no=0
 
-    def image2symbols(self, img: np.array):
+    def image2symbols(self, img: np.array,is_ycbcr=False):
         """
         Computes the symbol representation of an image by applying rgb2ycbcr,
         DCT, Quantization, ZigZag and ZeroRunEncoding in order.
@@ -33,7 +33,12 @@ class IntraCodec:
         """
         # YOUR CODE STARTS HERE
         # 1. RGB转YCbCr
-        ycbcr = rgb2ycbcr(img)
+        #ycbcr = rgb2ycbcr(img)
+        if not is_ycbcr:
+            ycbcr = rgb2ycbcr(img)
+        else:
+            ycbcr = img
+
         patcher = Patcher()
         patched_img = patcher.patch(ycbcr)
         # 2. 应用DCT变换
@@ -50,7 +55,7 @@ class IntraCodec:
         # YOUR CODE ENDS HERE
         return symbols
     
-    def symbols2image(self, symbols, original_shape):
+    def symbols2image(self, symbols, original_shape, is_ycbcr=False):
         """
         Reconstructs the original image from the symbol representation
         by applying ZeroRunDecoding, Inverse ZigZag, Dequantization and 
@@ -81,7 +86,11 @@ class IntraCodec:
         # 5. YCbCr转RGB
         patcher = Patcher()
         ycbcr = patcher.unpatch(ycbcr_patched)
-        reconstructed_img = ycbcr2rgb(ycbcr)
+        #reconstructed_img = ycbcr2rgb(ycbcr)
+        if not is_ycbcr:
+            reconstructed_img = ycbcr2rgb(ycbcr)
+        else:
+            reconstructed_img = ycbcr
         # YOUR CODE ENDS HERE
         return reconstructed_img
     
@@ -138,15 +147,12 @@ class IntraCodec:
             reconstructed_img: np.array of shape [H, W, C]
         """
         # YOUR CODE STARTS HERE
-        # 1. 计算期望的符号数量
-        expected_symbols = (original_shape[0] * original_shape[1] * original_shape[2] * 64) // (8 * 8)
 
-        # 2. 使用Huffman解码器解码
-        # 确保输入格式正确
+        # 1. 使用Huffman解码器解码
 
         symbols = self.huffman.decode(bitstream, self.symbols_no)
 
-        # 3. 从符号重建图像
+        # 2. 从符号重建图像
         reconstructed_img = self.symbols2image(symbols, original_shape)
         # YOUR CODE ENDS HERE
         return reconstructed_img
