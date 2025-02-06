@@ -32,7 +32,7 @@ class IntraCodec:
             symbols: List of integers
         """
         # YOUR CODE STARTS HERE
-        # 1. RGB转YCbCr
+        # 1. RGB to YCbCr
         #ycbcr = rgb2ycbcr(img)
         if not is_ycbcr:
             ycbcr = rgb2ycbcr(img)
@@ -41,16 +41,16 @@ class IntraCodec:
 
         patcher = Patcher()
         patched_img = patcher.patch(ycbcr)
-        # 2. 应用DCT变换
+        # 2. DCT
         dct_coeffs = self.dct.transform(patched_img)
 
-        # 3. 量化
+        # 3. QU
         quantized = self.quant.quantize(dct_coeffs)
 
-        # 4. ZigZag扫描
+        # 4. ZigZag
         zigzagged = self.zigzag.flatten(quantized)
 
-        # 5. 零游程编码
+        # 5.ZERORUN
         symbols = self.zerorun.encode(zigzagged)
         # YOUR CODE ENDS HERE
         return symbols
@@ -71,19 +71,19 @@ class IntraCodec:
         """
         patch_shape = [original_shape[0] // 8, original_shape[1] // 8, original_shape[2]]
         # YOUR CODE STARTS HERE
-        # 1. 零游程解码
+        # 1. ZERORUN
         zigzagged = self.zerorun.decode(symbols, patch_shape)
 
-        # 2. 反ZigZag扫描
+        # 2. 反ZigZag
         quantized = self.zigzag.unflatten(zigzagged)
 
-        # 3. 反量化
+        # 3. 反QU
         dct_coeffs = self.quant.dequantize(quantized)
 
-        # 4. 反DCT变换
+        # 4. 反DCT
         ycbcr_patched = self.dct.inverse_transform(dct_coeffs)
 
-        # 5. YCbCr转RGB
+        # 5. YCbCr TO RGB
         patcher = Patcher()
         ycbcr = patcher.unpatch(ycbcr_patched)
         #reconstructed_img = ycbcr2rgb(ycbcr)
@@ -105,14 +105,14 @@ class IntraCodec:
             Nothing
         """
         # YOUR CODE STARTS HERE
-        # 1. 获取图像的符号表示
+        # 1. Get a symbolic representation of the image
         symbols = self.image2symbols(training_img)
 
-        # 2. 计算符号的概率分布
+        # 2. Calculate the probability distribution of the symbols
         symbols_array = np.array(symbols)
         prob_dist = stats_marg(symbols_array, pixel_range=np.arange(-1000,4002))
 
-        # 3. 训练Huffman编码器
+        # 3. Training the Huffman Encoder
         self.huffman.train(prob_dist)
         # YOUR CODE ENDS HERE
 
@@ -127,10 +127,10 @@ class IntraCodec:
             bitstream: List of integers produced by the Huffman coder
         """
         # YOUR CODE STARTS HERE
-        # 1. 将图像转换为符号
+        # 1. Converting images to symbols
         symbols = self.image2symbols(img)
         self.symbols_no= len(symbols)
-        # 2. 使用Huffman编码器进行编码
+        # 2. Encoding with Huffman Encoder
         bitstream, _ = self.huffman.encode(symbols)
         # YOUR CODE ENDS HERE
         return bitstream
@@ -148,11 +148,11 @@ class IntraCodec:
         """
         # YOUR CODE STARTS HERE
 
-        # 1. 使用Huffman解码器解码
+        # 1. Decoding with Huffman Decoder
 
         symbols = self.huffman.decode(bitstream, self.symbols_no)
 
-        # 2. 从符号重建图像
+        # 2. Reconstructing images from symbols
         reconstructed_img = self.symbols2image(symbols, original_shape)
         # YOUR CODE ENDS HERE
         return reconstructed_img

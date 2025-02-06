@@ -9,6 +9,7 @@ from ivclab.utils import imread, calc_psnr
 
 def process_video_sequence(q_scale):
     # 1. READ AND TRAIN
+    #Attention! This path is the local computer path, you may need to adjust to the correct path!
     lena_small = np.double(imread('../../data/lena_small.tif'))
 
     # 2.  VideoCodec
@@ -21,7 +22,7 @@ def process_video_sequence(q_scale):
 
     # 3. ALL VIDEO
     filenames = [
-        '../../videodata/foreman0020.bmp',  # FIRST USE IF THEN USE ELSE
+        '../../videodata/foreman0020.bmp',  # FIRST USE IF THEN USE ELSE IN VIDEOCODEC
         '../../videodata/foreman0021.bmp',
         '../../videodata/foreman0022.bmp',
         '../../videodata/foreman0023.bmp',
@@ -61,7 +62,7 @@ def process_video_sequence(q_scale):
         else:
             total_bits = len(bitstream) * 8
         total_pixels = current_frame.shape[0] * current_frame.shape[1]
-        bitrate_val = total_bits / (total_pixels / 3)
+        bitrate_val = total_bits / (total_pixels / 4)
 
         psnr_list.append(psnr_val)
         bitrate_list.append(bitrate_val)
@@ -146,7 +147,7 @@ def main():
         reconstructed_img = codec.intra_decode(bitstream, lena.shape)
 
         psnr = calc_psnr(lena, reconstructed_img)
-        bitrate = len(bitstream) * 8 / (lena.shape[0] * lena.shape[1] / 3)
+        bitrate = len(bitstream) * 8 / (lena.shape[0] * lena.shape[1] / 4)
 
         still_psnr_values.append(psnr)
         still_bitrate_values.append(bitrate)

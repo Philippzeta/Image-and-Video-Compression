@@ -27,7 +27,7 @@ psnr = calc_psnr(foreman0020, reconstructed_img)
 # 7. bbp
 total_bits = len(bitstream)*8
 total_pixels = foreman0020.shape[0] * foreman0020.shape[1]
-pixel_number = total_pixels/3
+pixel_number = total_pixels/4
 bitrate = total_bits /pixel_number
 
 print(f"PSNR: {psnr:.2f} dB")

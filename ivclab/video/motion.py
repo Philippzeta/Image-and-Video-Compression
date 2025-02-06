@@ -41,8 +41,8 @@ class MotionCompensator:
                 loc_y = block_positions_y[i]
                 current_block = image[loc_y:loc_y + block_size, loc_x:loc_x + block_size]
 
-                min_ssd = None  #
-                best_x = None  # 初始化为None
+                min_ssd = None
+                best_x = None
                 best_y = None
 
                 # Search in ±4 range
@@ -56,7 +56,7 @@ class MotionCompensator:
                         # Calculate SSD
                         ssd = np.sum((current_block - ref_block) ** 2)
 
-                        # 第一个有效块或找到更好的匹配
+                        #
                         if min_ssd is None or ssd <= min_ssd:
                             min_ssd = ssd
                             best_x = ref_x

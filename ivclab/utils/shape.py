@@ -1,7 +1,12 @@
 import numpy as np
 from einops import rearrange
 
+
 class ZigZag:
+    """
+    An object that flattens two dimensional patches according to a zigzag rule
+    on a 8x8 grid
+    """
 
     def __init__(self):
         self.zigzag_order = np.asarray([
@@ -17,25 +22,44 @@ class ZigZag:
 
     def flatten(self, patched_img: np.array):
         flattened = rearrange(patched_img, 'h w c p0 p1 -> h w c (p0 p1)')
-        shuffled = flattened[:,:,:,self.zigzag_order]
+        shuffled = np.zeros_like(flattened)
+        shuffled[:, :, :, self.zigzag_order] = flattened
         return shuffled
 
-    def unflatten(self, flat_img):
-        unshuffled = np.zeros_like(flat_img)
-        unshuffled[:,:,:,self.zigzag_order] = flat_img
-        unflattened = rearrange(unshuffled, 'h w c (p0 p1) -> h w c p0 p1', p0=8, p1=8)
+    def unflatten(self, unshuffled):
+        shuffled = unshuffled[:, :, :, self.zigzag_order]
+        unflattened = rearrange(shuffled, 'h w c (p0 p1) -> h w c p0 p1', p0=8, p1=8)
         return unflattened
 
-class Patcher:
 
-    def __init__(self, window_size=(8,8)):
+class Patcher:
+    """
+    A class to extract/merge patches from/to an image
+    """
+
+    def __init__(self, window_size=(8, 8)):
         self.window_size = window_size
 
     def patch(self, img: np.array):
+        """
+        Extracts patches from an image.
 
+        img: np.array of shape [H, W, C]
+
+        returns:
+            patched_img = [H_patch, W_patch, C, H_window, W_window]
+        """
         return rearrange(img, '(h p0) (w p1) c -> h w c p0 p1', p0=self.window_size[0], p1=self.window_size[1])
-    
-    def unpatch(self, patched_img: np.array):
 
+    def unpatch(self, patched_img: np.array):
+        """
+        Merges patches to an image.
+
+        patched_img: np.array of shape [H_patch, W_patch, C, H_window, W_window]
+
+        returns:
+            img = [H, W, C]
+        """
         return rearrange(patched_img, 'h w c p0 p1 -> (h p0) (w p1) c', p0=self.window_size[0], p1=self.window_size[1])
+
     
